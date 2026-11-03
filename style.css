@@ -268,7 +268,7 @@ body { background: var(--canvas); color: var(--ink); min-height: 100vh; }
 .cal-legend { display: flex; gap: 8px; }
 .legend-item { display: flex; align-items: center; gap: 3px; font-size: 0.6rem; color: var(--ink-3); }
 .legend-dot { width: 7px; height: 7px; border-radius: 50%; }
-.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); }
+#calGrid, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); width: 100%; }
 .cal-dow { text-align: center; padding: 6px 2px; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.05em; color: var(--ink-3); text-transform: uppercase; background: var(--canvas); border-bottom: 1px solid var(--rule); }
 .cal-day { min-height: 58px; padding: 5px 5px; border-right: 1px solid var(--rule); border-bottom: 1px solid var(--rule); font-size: 0.68rem; }
 .cal-day:nth-child(7n) { border-right: none; }
@@ -355,6 +355,7 @@ body { background: var(--canvas); color: var(--ink); min-height: 100vh; }
 .q2 { background: #fffbeb; border: 2px solid #fcd34d; }
 .q3 { background: #f0f9ff; border: 2px solid #7dd3fc; }
 .q4 { background: var(--canvas); border: 2px solid var(--rule); }
+#q1, #q2, #q3, #q4 { display: flex; flex-direction: column; gap: 8px; }
 .matrix-empty { font-size: 0.7rem; color: rgba(0,0,0,.3); font-style: italic; text-align: center; padding: 8px 0; }
 
 /* ─── Modal ────────────────────── */
@@ -428,6 +429,8 @@ body { background: var(--canvas); color: var(--ink); min-height: 100vh; }
   .two-col { grid-template-columns: 1fr; }
   .right-stack { flex-direction: column-reverse; }
   .matrix-grid { grid-template-columns: 1fr; }
+  .cal-day { min-height: 48px; padding: 4px 2px; font-size: 0.62rem; }
+  .cal-ev { font-size: 0.52rem; }
 }
 
 @media (min-width: 768px) and (max-width: 1023px) {
