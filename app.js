@@ -4,7 +4,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 import { initializeApp }          from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
-import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp }
+import { getFirestore, collection, addDoc, updateDoc, setDoc, deleteDoc, doc, query, orderBy, onSnapshot, serverTimestamp }
                                   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { getAuth, signInAnonymously, onAuthStateChanged, browserLocalPersistence, setPersistence }
                                   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
@@ -50,9 +50,14 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-// ── Firebase CRUD ────────────────────────────────────────
+// ── Firebase CRUD (Shared Board: PC & Smartphone sync directly) ──
+const BOARD_ID = 'main';
+const tasksCollection = () => collection(db, 'boards', BOARD_ID, 'tasks');
+const taskDoc = (id) => doc(db, 'boards', BOARD_ID, 'tasks', id);
+const boardDoc = () => doc(db, 'boards', BOARD_ID);
+
 export async function addTask(task) {
-  await addDoc(collection(db, 'users', userId(), 'tasks'), {
+  await addDoc(tasksCollection(), {
     ...task,
     status:    task.status    ?? 'todo',
     progress:  task.progress  ?? 0,
@@ -63,16 +68,16 @@ export async function addTask(task) {
 }
 
 export async function updateTask(id, patch) {
-  await updateDoc(doc(db, 'users', userId(), 'tasks', id), patch);
+  await updateDoc(taskDoc(id), patch);
 }
 
 export async function deleteTask(id) {
-  await deleteDoc(doc(db, 'users', userId(), 'tasks', id));
+  await deleteDoc(taskDoc(id));
 }
 
 export function onTasksChange(callback) {
   const q = query(
-    collection(db, 'users', userId(), 'tasks'),
+    tasksCollection(),
     orderBy('deadline', 'asc')
   );
   return onSnapshot(q, snap => {
@@ -473,13 +478,37 @@ function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Memo note persistence ────────────────────────────────
+// ── Memo note persistence (Realtime Cloud Sync) ──────────
 function initMemo() {
   const el = document.getElementById('memoText');
   const key = 'focusboard_memo';
   const saved = localStorage.getItem(key);
   if (saved) el.textContent = saved;
-  el.addEventListener('input', () => localStorage.setItem(key, el.textContent));
+
+  // Listen to remote changes from other devices (PC <-> Phone)
+  onSnapshot(boardDoc(), snap => {
+    if (snap.exists()) {
+      const remoteMemo = snap.data().memo;
+      if (remoteMemo !== undefined && document.activeElement !== el) {
+        el.textContent = remoteMemo;
+        localStorage.setItem(key, remoteMemo);
+      }
+    }
+  });
+
+  // Debounced save to Firestore
+  let timer;
+  el.addEventListener('input', () => {
+    localStorage.setItem(key, el.textContent);
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      try {
+        await setDoc(boardDoc(), { memo: el.textContent }, { merge: true });
+      } catch (e) {
+        console.warn('Memo sync error:', e);
+      }
+    }, 600);
+  });
 }
 
 // ── FAB visibility ───────────────────────────────────────
