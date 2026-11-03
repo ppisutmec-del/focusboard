@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1e1b4b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FocusBoard">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>FocusBoard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━
+     DESKTOP SIDEBAR
+━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<nav class="sidebar" id="sidebar">
+  <div class="sb-brand">
+    <div class="sb-brand-name">FocusBoard</div>
+    <div class="sb-brand-date" id="sbDate">— — —</div>
+  </div>
+
+  <div class="sb-section">มุมมอง</div>
+  <div class="sb-item active" onclick="switchView('overview',this)" data-view="overview">
+    <span class="sb-icon">◉</span> ภาพรวมวันนี้
+  </div>
+  <div class="sb-item" onclick="switchView('matrix',this)" data-view="matrix">
+    <span class="sb-icon">⊞</span> จัดลำดับสำคัญ
+  </div>
+
+  <div class="sb-section">แจ้งเตือน</div>
+  <div class="sb-item">
+    <span class="sb-icon">◌</span> ครบกำหนดวันนี้
+    <span class="sb-badge" id="badgeToday">0</span>
+  </div>
+  <div class="sb-item">
+    <span class="sb-icon">◌</span> ใน 3 วัน
+    <span class="sb-badge amber" id="badge3d">0</span>
+  </div>
+
+  <div class="sb-footer">
+    <button class="btn-add-full" onclick="openModal()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      แปะโน้ตงานใหม่
+    </button>
+  </div>
+</nav>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━
+     MOBILE BOTTOM NAV
+━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <div class="bn-item active" id="bnOverview" onclick="switchView('overview',null);setBottomActive(this)">
+      <div class="bn-icon">◉</div><span>ภาพรวม</span>
+    </div>
+    <div class="bn-item" id="bnMatrix" onclick="switchView('matrix',null);setBottomActive(this)">
+      <div class="bn-icon">⊞</div><span>ลำดับสำคัญ</span>
+    </div>
+    <div class="bn-item has-badge" id="bnAlerts">
+      <div class="bn-icon">◌</div><span>แจ้งเตือน</span>
+      <span class="bn-dot-badge" id="bnBadge"></span>
+    </div>
+    <div class="bn-item">
+      <div class="bn-icon">◻</div><span>ปฏิทิน</span>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile FAB -->
+<button class="fab" id="fab" onclick="openModal()" aria-label="เพิ่มงานใหม่">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━
+     MAIN
+━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="main">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-info">
+      <div class="topbar-title" id="topbarTitle">ภาพรวมงาน</div>
+      <div class="topbar-sub" id="topbarDate">—</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="tab-group">
+        <button class="tab-btn active" id="tabOv" onclick="switchView('overview',null)">ภาพรวม</button>
+        <button class="tab-btn" id="tabMx" onclick="switchView('matrix',null)">🎯 จัดลำดับ</button>
+      </div>
+      <button class="btn-new" onclick="openModal()">+ งานใหม่</button>
+    </div>
+  </div>
+
+  <!-- Loading screen -->
+  <div id="loadingScreen" class="loading-screen">
+    <div class="loading-inner">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">กำลังเชื่อมต่อ FocusBoard...</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════
+       OVERVIEW VIEW
+  ════════════════════════════ -->
+  <div class="content hidden" id="viewOverview">
+
+    <!-- Alert strip -->
+    <div class="alert-strip" id="alertStrip">
+      <div class="alert-hd">
+        <div class="alert-hd-left">
+          <div class="pulse-dot"></div>
+          <h2>งานใกล้ครบกำหนด — ต้องจัดการก่อนถูกงานใหม่แย่งความสนใจ</h2>
+        </div>
+        <span class="alert-badge" id="overdueCount">เลยกำหนด 0 งาน</span>
+      </div>
+      <div id="alertItems">
+        <div class="alert-empty">✓ ยังไม่มีงานด่วนในขณะนี้</div>
+      </div>
+      <div class="alert-footnote">ระบบแจ้งเตือนล่วงหน้า 3 วัน · 1 วัน · วันครบกำหนด — งานไม่ตกหล่นแม้มีงานแทรก</div>
+    </div>
+
+    <!-- Focus 3 -->
+    <div>
+      <div class="sec-hd">
+        <h2>โฟกัสวันนี้</h2>
+        <span>— กฎ 3 งาน: ทำแค่นี้ก่อน</span>
+      </div>
+      <div class="focus-grid" id="focusGrid">
+        <div class="postit-placeholder">ยังไม่มีงาน — กด "+ งานใหม่" เพื่อเริ่มต้น</div>
+      </div>
+    </div>
+
+    <!-- Calendar + Right -->
+    <div class="two-col">
+      <div class="cal-card">
+        <div class="cal-hd">
+          <h3 id="calTitle">ปฏิทิน</h3>
+          <div class="cal-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:#fca5a5"></div> ด่วน</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#fcd34d"></div> งาน</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#7dd3fc"></div> นัด</div>
+          </div>
+        </div>
+        <div id="calGrid"></div>
+      </div>
+
+      <div class="right-stack">
+        <div class="panel">
+          <div class="panel-hd"><h3>ใกล้ครบกำหนด</h3><span>5 งานถัดไป</span></div>
+          <div id="deadlineList"></div>
+        </div>
+        <div class="memo-note" id="memoNote">
+          <div class="memo-lbl">โน้ตด่วน</div>
+          <div class="memo-text" id="memoText" contenteditable="true" placeholder="แตะเพื่อพิมพ์โน้ตด่วน...">แตะเพื่อพิมพ์โน้ตด่วน...</div>
+          <div class="memo-edit">แตะเพื่อแก้ไข ✎</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly strip -->
+    <div class="week-card">
+      <div class="week-hd">
+        <h3 id="weekTitle">สัปดาห์นี้</h3>
+        <span>เลื่อนดูได้</span>
+      </div>
+      <div class="week-scroll">
+        <div class="week-cols" id="weekCols"></div>
+      </div>
+    </div>
+
+    <!-- Kanban -->
+    <div class="kanban">
+      <div class="kanban-hd">
+        <h3>บอร์ดงาน Post-it — ลากสลับได้</h3>
+        <span>เลื่อนดูได้บนมือถือ</span>
+      </div>
+      <div class="kanban-scroll">
+        <div class="kanban-cols" id="kanbanCols">
+          <div class="kcol">
+            <div class="kcol-title">ต้องทำ <span class="kcol-count" id="kCountTodo">0</span></div>
+            <div id="kColTodo"></div>
+          </div>
+          <div class="kcol">
+            <div class="kcol-title">กำลังทำ <span class="kcol-count" id="kCountDoing">0</span></div>
+            <div id="kColDoing"></div>
+          </div>
+          <div class="kcol">
+            <div class="kcol-title">เสร็จแล้ว <span class="kcol-count done-count" id="kCountDone">0</span></div>
+            <div id="kColDone"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /viewOverview -->
+
+  <!-- ═══════════════════════════
+       MATRIX VIEW
+  ════════════════════════════ -->
+  <div class="content hidden" id="viewMatrix">
+
+    <div class="matrix-intro">
+      <div class="matrix-intro-icon">💡</div>
+      <div>
+        <h3>เมทริกซ์ความสำคัญ — แก้ปัญหาไม่รู้จะเริ่มตรงไหน</h3>
+        <p>เมื่อมีงานใหม่เข้ามา แปะลงใน 4 ช่องนี้ก่อน ระบบจะคัดกรองส่งขึ้น "โฟกัสวันนี้" และแจ้งเตือนให้อัตโนมัติ</p>
+      </div>
+    </div>
+
+    <div class="matrix-grid">
+      <div class="mquad q1">
+        <div class="mquad-hd">
+          <div class="mquad-title" style="color:#9f1239">1. ด่วน &amp; สำคัญ</div>
+          <span class="mquad-badge" style="background:var(--rose);color:#fff">ทำเดี๋ยวนี้</span>
+        </div>
+        <div class="mquad-desc">งานที่มี Deadline ใกล้มาก และมีผลกระทบสูง</div>
+        <div id="q1"></div>
+      </div>
+      <div class="mquad q2">
+        <div class="mquad-hd">
+          <div class="mquad-title" style="color:#78350f">2. สำคัญ แต่ยังไม่ด่วน</div>
+          <span class="mquad-badge" style="background:#fcd34d;color:#78350f">นัดวันทำ</span>
+        </div>
+        <div class="mquad-desc">งานชิ้นใหญ่ วันส่งยังอีกหลายวัน — มักถูกงานด่วนแย่งเวลาจนลืม</div>
+        <div id="q2"></div>
+      </div>
+      <div class="mquad q3">
+        <div class="mquad-hd">
+          <div class="mquad-title" style="color:#075985">3. ด่วน แต่ไม่สำคัญมาก</div>
+          <span class="mquad-badge" style="background:#7dd3fc;color:#075985">เคลียร์เร็ว</span>
+        </div>
+        <div class="mquad-desc">งานจุกจิก คนอื่นต้องการด่วน แต่ไม่ใช่งานหลักของคุณ</div>
+        <div id="q3"></div>
+      </div>
+      <div class="mquad q4">
+        <div class="mquad-hd">
+          <div class="mquad-title" style="color:var(--ink-2)">4. ไม่ด่วน &amp; ไม่สำคัญ</div>
+          <span class="mquad-badge" style="background:var(--rule);color:var(--ink-2)">Backlog</span>
+        </div>
+        <div class="mquad-desc">ไอเดียทั่วไป ถ้าไม่ทำตอนนี้ก็ไม่มีผลเสีย</div>
+        <div id="q4"></div>
+      </div>
+    </div>
+
+  </div><!-- /viewMatrix -->
+
+</div><!-- /main -->
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━
+     ADD / EDIT TASK MODAL
+━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="handleBdClick(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-drag"></div>
+    <div class="modal-hd">
+      <span class="modal-title" id="modalTitle">📝 แปะ Post-it งานใหม่</span>
+      <button class="modal-close" onclick="closeModal()" aria-label="ปิด">×</button>
+    </div>
+    <form class="modal-body" id="addTaskForm" onsubmit="handleFormSubmit(event)">
+      <input type="hidden" id="editTaskId" value="">
+      <div>
+        <label class="form-lbl" for="taskTitle">ชื่องาน</label>
+        <input class="form-input" id="taskTitle" name="title" type="text" placeholder="เช่น ส่งเอกสารภาษี, โทรนัดลูกค้า..." required>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="form-lbl" for="taskDeadline">กำหนดส่ง</label>
+          <input class="form-input" id="taskDeadline" name="deadline" type="date" required>
+        </div>
+        <div>
+          <label class="form-lbl">สี Post-it</label>
+          <div class="swatches" role="radiogroup">
+            <div class="swatch selected" data-color="note-p" style="background:var(--note-p)" tabindex="0" role="radio" aria-checked="true" title="ชมพู" onclick="selectSwatch(this)"></div>
+            <div class="swatch" data-color="note-y" style="background:var(--note-y)" tabindex="0" role="radio" aria-checked="false" title="เหลือง" onclick="selectSwatch(this)"></div>
+            <div class="swatch" data-color="note-b" style="background:var(--note-b)" tabindex="0" role="radio" aria-checked="false" title="ฟ้า" onclick="selectSwatch(this)"></div>
+            <div class="swatch" data-color="note-g" style="background:var(--note-g)" tabindex="0" role="radio" aria-checked="false" title="เขียว" onclick="selectSwatch(this)"></div>
+            <div class="swatch" data-color="note-o" style="background:var(--note-o)" tabindex="0" role="radio" aria-checked="false" title="ส้ม" onclick="selectSwatch(this)"></div>
+          </div>
+          <input type="hidden" id="taskColor" value="note-p">
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="form-lbl" for="taskProgress">ความคืบหน้า (%)</label>
+          <input class="form-input" id="taskProgress" name="progress" type="number" min="0" max="100" value="0" placeholder="0">
+        </div>
+        <div>
+          <label class="form-lbl" for="taskStatus">สถานะ</label>
+          <select class="form-input" id="taskStatus" name="status">
+            <option value="todo">ต้องทำ</option>
+            <option value="doing">กำลังทำ</option>
+            <option value="done">เสร็จแล้ว</option>
+          </select>
+        </div>
+      </div>
+      <div class="triage-box">
+        <div class="triage-lbl">🤖 จัดหมวดหมู่ความสำคัญ</div>
+        <div class="triage-checks">
+          <label class="triage-check">
+            <input type="checkbox" id="taskUrgency" name="urgency">
+            ต้องเสร็จภายใน 1–2 วัน
+          </label>
+          <label class="triage-check">
+            <input type="checkbox" id="taskImportance" name="importance">
+            มีผลกระทบต่องานหลักสูง
+          </label>
+        </div>
+        <div class="triage-hint">ระบบจะวางงานไว้ในช่องลำดับความสำคัญที่ถูกต้องให้อัตโนมัติ</div>
+      </div>
+    </form>
+    <div class="modal-foot">
+      <button class="btn-cancel" type="button" id="btnDelete" onclick="handleDelete()" style="display:none;color:var(--rose);border-color:#fca5a5">🗑 ลบงาน</button>
+      <div style="flex:1"></div>
+      <button class="btn-cancel" type="button" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn-primary" type="submit" form="addTaskForm" id="btnSubmit">แปะลงบอร์ดทันที</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
